@@ -4,3 +4,5 @@ requests
 Flask
 edge-tts
 yt-dlp
+PyNaCl
+static-ffmpeg
