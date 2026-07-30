@@ -20,7 +20,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot está vivo!"
+    return "Bot está vivo!",200
 
 @app.route('/status')
 def status():
