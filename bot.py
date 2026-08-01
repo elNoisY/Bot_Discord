@@ -1191,13 +1191,17 @@ async def play(ctx, *, busqueda: str):
             return await mensaje_espera.edit(content="❌ No se encontró el video.")
 
         if 'entries' in info:
-            if len(info['entries']) == 0:
+            entries = list(info['entries'])
+            if not entries:
                 return await mensaje_espera.edit(content="❌ Sin resultados.")
             datos_video = info['entries'][0]
         else:
             datos_video = info
 
-        url_video = datos_video.get('webpage_url', '')or datos_video.get('url') or f"https://www.youtube.com/watch?v={datos_video.get('id')}"
+        url_video = datos_video.get('webpage_url') or datos_video.get('url')
+        if not url_video and datos_video.get('id'):
+            url_video= f"https://www.youtube.com/watch?v={datos_video['id']}"
+            
         titulo = str(datos_video.get('title', 'Canción Desconocida'))
         segundos = datos_video.get('duration', 0)
         duracion = str(timedelta(seconds=int(segundos))) if segundos else "Desconocida"
