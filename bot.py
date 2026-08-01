@@ -150,16 +150,6 @@ FFMPEG_STREAM_OPTIONS = {
 
 ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
 
-info = await loop.run_in_executor(
-    None, 
-    lambda: ytdl.extract_info(termino_busqueda, download=False)
-)
-
-if 'entries' in info:
-    info = info['entries'][0]
-
-audio_url = info.get('url') or info.get('webpage_url')
-
 def inicializar_db():
     conn = sqlite3.connect("economia_qaybio.db")
     cursor = conn.cursor()
