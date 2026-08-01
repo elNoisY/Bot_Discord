@@ -107,6 +107,7 @@ salas_dinamicas = []
 
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
+    'format_sort': ['res', 'ext:mp4:m4a', 'hasaudio'],
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
@@ -114,11 +115,11 @@ YTDL_OPTIONS = {
     'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
-    'default_search': 'auto',
+    'default_search': 'ytsearch',
     'source_address': '0.0.0.0',
     'extractor_args': {
         'youtube': {
-            'player_client': ['android', 'ios', 'mweb'],
+            'player_client': ['android', 'ios', 'web'],
         }
     },
     'postprocessors': [{
@@ -148,6 +149,16 @@ FFMPEG_STREAM_OPTIONS = {
 }
 
 ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
+
+info = await loop.run_in_executor(
+    None, 
+    lambda: ytdl.extract_info(termino_busqueda, download=False)
+)
+
+if 'entries' in info:
+    info = info['entries'][0]
+
+audio_url = info.get('url') or info.get('webpage_url')
 
 def inicializar_db():
     conn = sqlite3.connect("economia_qaybio.db")
