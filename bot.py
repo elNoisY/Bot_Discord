@@ -1198,7 +1198,7 @@ async def play(ctx, *, busqueda: str):
 
         if 'entries' in info:
             # next(iter(...)) extrae el primer elemento tanto de listas como de objetos 'islice'
-            datos_video = next(iter(entries), None)
+            datos_video = next(iter(info['entries']), None)
         else:
             datos_video = info
 
