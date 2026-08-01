@@ -1196,8 +1196,12 @@ async def play(ctx, *, busqueda: str):
         if not info:
             return await mensaje_espera.edit(content="❌ No se encontró el video.")
 
-        if 'entries' in info and info['entries']:
-            datos_video = info['entries'][0]
+        if 'entries' in info:
+            entries = info['entries']
+            # next(iter(...)) extrae el primer elemento tanto de listas como de objetos 'islice'
+            datos_video = next(iter(entries), None)
+            if not datos_video:
+                return await mensaje_espera.edit(content="❌ Sin resultados.")
         else:
             datos_video = info
 
