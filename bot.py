@@ -109,10 +109,9 @@ TIENDA_ROLES = {
 salas_dinamicas = []
 
 YTDL_OPTIONS = {
-    'format': 'ba/ba*/bestaudio/best',
+    'format': 'bestaudio/best/ba/b',
     'noplaylist': True,
     'nocheckcertificate': True,
-    'ignoreerrors': False,
     'quiet': True,
     'no_warnings': True,
     'default_search': 'auto',
@@ -120,7 +119,7 @@ YTDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'extractor_args': {
         'youtube': {
-            'player_client': ['android', 'ios'],
+            'player_client': ['ios', 'mweb']
         }
     },
     'postprocessors': [{
@@ -128,6 +127,7 @@ YTDL_OPTIONS = {
         'preferredcodec': 'mp3',
         'preferredquality': '192',
     }],
+    'keepvideo': False,
     'outtmpl': 'music_cache_%(guild_id)s.%(ext)s',
 }
 
@@ -1197,11 +1197,8 @@ async def play(ctx, *, busqueda: str):
             return await mensaje_espera.edit(content="❌ No se encontró el video.")
 
         if 'entries' in info:
-            entries = info['entries']
             # next(iter(...)) extrae el primer elemento tanto de listas como de objetos 'islice'
             datos_video = next(iter(entries), None)
-            if not datos_video:
-                return await mensaje_espera.edit(content="❌ Sin resultados.")
         else:
             datos_video = info
 
