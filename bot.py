@@ -109,7 +109,8 @@ TIENDA_ROLES = {
 salas_dinamicas = []
 
 YTDL_OPTIONS = {
-    'format': 'bestaudio/best/ba/b',
+    'format': 'bestaudio/best',
+    'outtmpl': '/tmp/%(id)s.%(ext)s',
     'noplaylist': True,
     'nocheckcertificate': True,
     'quiet': True,
@@ -119,7 +120,7 @@ YTDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'extractor_args': {
         'youtube': {
-            'player_client': ['ios', 'mweb']
+            'player_client': ['android', 'ios', 'mweb']
         }
     },
     'postprocessors': [{
@@ -1197,14 +1198,21 @@ async def play(ctx, *, busqueda: str):
             return await mensaje_espera.edit(content="❌ No se encontró el video.")
 
         if 'entries' in info:
-            # next(iter(...)) extrae el primer elemento tanto de listas como de objetos 'islice'
             datos_video = next(iter(info['entries']), None)
         else:
             datos_video = info
 
-        url_video = datos_video.get('webpage_url') or datos_video.get('url')
-        if not url_video and datos_video.get('id'):
-            url_video = f"https://www.youtube.com/watch?v={datos_video['id']}"
+        if not datos_video:
+            return await mensaje_espera.edit(content="❌ Sin resultados.")
+
+        video_id = datos_video.get('id')
+        url_video = f"https://www.youtube.com/watch?v={video_id}" if video_id else datos_video.get('url')
+
+        info_descarga = await loop.run_in_executor(
+            None, lambda: ytdl.extract_info(url_video, download=True)
+        )
+
+        archivo_local = f"/tmp/{video_id}.mp3"
             
         titulo = str(datos_video.get('title', 'Canción Desconocida'))
         segundos = datos_video.get('duration', 0)
