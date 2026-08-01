@@ -1191,10 +1191,10 @@ async def play(ctx, *, busqueda: str):
             return await mensaje_espera.edit(content="❌ No se encontró el video.")
 
         if 'entries' in info:
-            entries = list(info['entries'])
-            if not entries:
+            entries = info['entries']
+            datos_video = next(iter(entries), None)
+            if not datos_video:
                 return await mensaje_espera.edit(content="❌ Sin resultados.")
-            datos_video = info['entries'][0]
         else:
             datos_video = info
 
