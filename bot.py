@@ -16,6 +16,9 @@ import sqlite3
 import random
 import static_ffmpeg
 
+
+DOWNLOAD_DIR = "/tmp/bot_audio"
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 static_ffmpeg.add_paths()
 
 # --- CONFIGURACIÓN DE FLASK (Servidor Web para Render / Mantener Vivo) ---
@@ -106,19 +109,20 @@ TIENDA_ROLES = {
 salas_dinamicas = []
 
 YTDL_OPTIONS = {
-    'format': 'bestaudio/best',
+    'format': 'ba/ba*/bestaudio/best',
+    'outtmpl': os.path.join(DOWNLOAD_DIR, '%(id)s.%(ext)s'),
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
     'ignoreerrors': False,
-    'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
     'default_search': 'auto',
+    'cookiefile': 'cookies.txt',
     'source_address': '0.0.0.0',
     'extractor_args': {
         'youtube': {
-            'player_client': ['android', 'ios', 'web'],
+            'player_client': ['android', 'ios'],
         }
     },
     'postprocessors': [{
@@ -1163,7 +1167,7 @@ async def tts_say(ctx, *, texto: str):
 
 @bot.command(name="play", aliases=["p"])
 async def play(ctx, *, busqueda: str):
-    """Busca y reproduce canciones configurando outtmpl como un diccionario válido para yt_dlp."""
+    """Busca, descarga localmente en /tmp y reproduce audio en el canal de voz."""
     if not ctx.author.voice:
         return await ctx.send(f"⚠️ {ctx.author.mention}, ¡debes entrar a un canal de voz primero!")
 
@@ -1179,47 +1183,53 @@ async def play(ctx, *, busqueda: str):
 
     loop = bot.loop or asyncio.get_event_loop()
     try:
-        filename_base = f"music_cache_{ctx.guild.id}"
+        # Base de nombre única por servidor guardada en /tmp
+        filename_base = os.path.join(DOWNLOAD_DIR, f"music_cache_{ctx.guild.id}")
+        
+        # Configurar salida de yt_dlp apuntando al /tmp
         ytdl.params['outtmpl'] = {'default': f'{filename_base}.%(ext)s'}
         
         es_url = busqueda.startswith("http://") or busqueda.startswith("https://")
         termino_busqueda = busqueda if es_url else f"ytsearch1:{busqueda}"
         
-        info = await loop.run_in_executor(None, lambda: ytdl.extract_info(termino_busqueda, download=False, process=False))
+        # 1. Extraemos la información sin omitir el procesamiento para obtener la URL real
+        info = await loop.run_in_executor(None, lambda: ytdl.extract_info(termino_busqueda, download=False))
         
         if not info:
             return await mensaje_espera.edit(content="❌ No se encontró el video.")
 
-        if 'entries' in info:
-            entries = info['entries']
-            datos_video = next(iter(entries), None)
-            if not datos_video:
-                return await mensaje_espera.edit(content="❌ Sin resultados.")
+        if 'entries' in info and info['entries']:
+            datos_video = info['entries'][0]
         else:
             datos_video = info
 
         url_video = datos_video.get('webpage_url') or datos_video.get('url')
         if not url_video and datos_video.get('id'):
-            url_video= f"https://www.youtube.com/watch?v={datos_video['id']}"
+            url_video = f"https://www.youtube.com/watch?v={datos_video['id']}"
             
         titulo = str(datos_video.get('title', 'Canción Desconocida'))
         segundos = datos_video.get('duration', 0)
         duracion = str(timedelta(seconds=int(segundos))) if segundos else "Desconocida"
         thumbnail = str(datos_video.get('thumbnail', ''))
 
+        # 2. Descarga del archivo de audio a disco
         try:
             await loop.run_in_executor(None, lambda: ytdl.extract_info(url_video, download=True))
         except Exception as download_error:
             print(f"[Descarga] Nota u observación durante la conversión: {download_error}")
 
+        # 3. Verificación del archivo final en /tmp
         filename = f"{filename_base}.mp3"
         if not os.path.exists(filename):
+            # Si FFmpeg extractAudio falló en convertir a MP3, busca las extensiones crudas
             for ext in ['m4a', 'webm', 'opus', 'mp4']:
-                if os.path.exists(f"{filename_base}.{ext}"):
-                    filename = f"{filename_base}.{ext}"
+                posible_archivo = f"{filename_base}.{ext}"
+                if os.path.exists(posible_archivo):
+                    filename = posible_archivo
                     break
 
         if not os.path.exists(filename):
+            print(f"[DEBUG Render] Archivos presentes en {DOWNLOAD_DIR}: {os.listdir(DOWNLOAD_DIR)}")
             return await mensaje_espera.edit(content="❌ Error: No se pudo generar el archivo de audio local.")
 
     except Exception as e:
@@ -1227,14 +1237,17 @@ async def play(ctx, *, busqueda: str):
         traceback.print_exc()
         return await mensaje_espera.edit(content=f"❌ Error al procesar la canción: {e}")
 
+    # Detener reproducción actual para reemplazar con el nuevo archivo
     if voice_client.is_playing() or voice_client.is_paused():
         voice_client.stop()
 
+    # Variables de estado requeridas para tu sistema de !say
     voice_client.is_music = True
     voice_client.archivo_musica = filename
     voice_client.segundos_acumulados = 0 
     voice_client.inicio_tiempo = time.time() 
 
+    # Reproducción con FFmpeg desde la ruta local /tmp
     source = discord.FFmpegPCMAudio(filename, **FFMPEG_LOCAL_OPTIONS)
     voice_client.play(source)
 
