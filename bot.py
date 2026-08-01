@@ -129,10 +129,14 @@ YTDL_OPTIONS = {
     'outtmpl': 'music_cache_%(guild_id)s.%(ext)s',
 }
 
-if "YOUTUBE_COOKIES" in os.environ:
-    with open("cookies.txt", "w") as f:
-        f.write(os.getenv("YOUTUBE_COOKIES"))
-    YTDL_OPTIONS['cookiefile'] = 'cookies.txt'
+if "YOUTUBE_COOKIES" in os.environ and os.getenv("YOUTUBE_COOKIES").strip():
+    try:
+        with open("cookies.txt", "w", encoding="utf-8") as f:
+            f.write(os.getenv("YOUTUBE_COOKIES"))
+        YTDL_OPTIONS['cookiefile'] = 'cookies.txt' 
+        print("🍪 Cookies de YouTube configuradas correctamente.")
+    except Exception as e:
+        print(f"⚠️ Error al guardar cookies: {e}")
 
 FFMPEG_LOCAL_OPTIONS = {
     'options': '-vn',
