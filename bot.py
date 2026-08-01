@@ -105,6 +105,11 @@ TIENDA_ROLES = {
 
 salas_dinamicas = []
 
+if "YOUTUBE_COOKIES" in os.environ:
+    with open("cookies.txt", "w") as f:
+        f.write(os.getenv("YOUTUBE_COOKIES"))
+    YTDL_OPTIONS['cookiefile] = 'cookies.txt'
+
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'restrictfilenames': True,
@@ -116,6 +121,11 @@ YTDL_OPTIONS = {
     'no_warnings': True,
     'default_search': 'auto',
     'source_address': '0.0.0.0',
+    'extractor_args': {
+        'youtube': {
+            'player_client': ['android', 'ios', 'mweb']
+        }
+    },
     'postprocessors': [{
         'key': 'FFmpegExtractAudio',
         'preferredcodec': 'mp3',
