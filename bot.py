@@ -107,7 +107,6 @@ salas_dinamicas = []
 
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
-    'format_sort': ['res', 'ext:mp4:m4a', 'hasaudio'],
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
@@ -115,7 +114,7 @@ YTDL_OPTIONS = {
     'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
-    'default_search': 'ytsearch',
+    'default_search': 'auto',
     'source_address': '0.0.0.0',
     'extractor_args': {
         'youtube': {
@@ -1186,7 +1185,7 @@ async def play(ctx, *, busqueda: str):
         es_url = busqueda.startswith("http://") or busqueda.startswith("https://")
         termino_busqueda = busqueda if es_url else f"ytsearch1:{busqueda}"
         
-        info = await loop.run_in_executor(None, lambda: ytdl.extract_info(termino_busqueda, download=False))
+        info = await loop.run_in_executor(None, lambda: ytdl.extract_info(termino_busqueda, download=False, process=False))
         
         if not info:
             return await mensaje_espera.edit(content="❌ No se encontró el video.")
@@ -1198,7 +1197,7 @@ async def play(ctx, *, busqueda: str):
         else:
             datos_video = info
 
-        url_video = str(datos_video.get('webpage_url', ''))
+        url_video = datos_video.get('webpage_url', '')or datos_video.get('url') or f"https://www.youtube.com/watch?v={datos_video.get('id')}"
         titulo = str(datos_video.get('title', 'Canción Desconocida'))
         segundos = datos_video.get('duration', 0)
         duracion = str(timedelta(seconds=int(segundos))) if segundos else "Desconocida"
