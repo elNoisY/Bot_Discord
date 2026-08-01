@@ -110,8 +110,6 @@ salas_dinamicas = []
 
 YTDL_OPTIONS = {
     'format': 'ba/ba*/bestaudio/best',
-    'outtmpl': os.path.join(DOWNLOAD_DIR, '%(id)s.%(ext)s'),
-    'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
     'ignoreerrors': False,
@@ -1193,7 +1191,7 @@ async def play(ctx, *, busqueda: str):
         termino_busqueda = busqueda if es_url else f"ytsearch1:{busqueda}"
         
         # 1. Extraemos la información sin omitir el procesamiento para obtener la URL real
-        info = await loop.run_in_executor(None, lambda: ytdl.extract_info(termino_busqueda, download=False))
+        info = await loop.run_in_executor(None, lambda: ytdl.extract_info(termino_busqueda, download=False, process=False))
         
         if not info:
             return await mensaje_espera.edit(content="❌ No se encontró el video.")
