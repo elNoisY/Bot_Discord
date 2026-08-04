@@ -130,7 +130,7 @@ if cookies_b64:
         print(f"⚠️ Error al procesar las cookies: {e}")
 
 YTDL_OPTIONS = {
-    'format': 'best',
+    'format': 'bestaudio/best/bestvideo+bestaudio',
     'outtmpl': '/tmp/%(id)s.%(ext)s',
     'noplaylist': True,
     'nocheckcertificate': True,
@@ -139,9 +139,12 @@ YTDL_OPTIONS = {
     'default_search': 'ytsearch1',
     'source_address': '0.0.0.0',
     'cookiefile': cookiefile_path,  # Apunta directamente a /tmp/cookies.txt
+
+    'extract_flat': 'in_playlist',
+    
     'extractor_args': {
         'youtube': {
-            'player_client': ['ios', 'android']
+            'player_client': ['mweb', 'android', 'ios', 'web']
         }
     },
     'postprocessors': [{
