@@ -115,8 +115,7 @@ YTDL_OPTIONS = {
     'nocheckcertificate': True,
     'quiet': True,
     'no_warnings': True,
-    'default_search': 'auto',
-    'cookiefile': 'cookies.txt',
+    'default_search': 'ytsearch1',
     'source_address': '0.0.0.0',
     'extractor_args': {
         'youtube': {
@@ -129,7 +128,6 @@ YTDL_OPTIONS = {
         'preferredquality': '192',
     }],
     'keepvideo': False,
-    'outtmpl': 'music_cache_%(guild_id)s.%(ext)s',
 }
 
 if "YOUTUBE_COOKIES" in os.environ and os.getenv("YOUTUBE_COOKIES").strip():
@@ -1181,52 +1179,36 @@ async def play(ctx, *, busqueda: str):
     mensaje_espera = await ctx.send(f"🔍 Buscando **{busqueda}** en YouTube...")
 
     loop = bot.loop or asyncio.get_event_loop()
-    try:
-        # Base de nombre única por servidor guardada en /tmp
-        filename_base = os.path.join(DOWNLOAD_DIR, f"music_cache_{ctx.guild.id}")
-        
-        # Configurar salida de yt_dlp apuntando al /tmp
-        ytdl.params['outtmpl'] = {'default': f'{filename_base}.%(ext)s'}
-        
+    try:    
         es_url = busqueda.startswith("http://") or busqueda.startswith("https://")
         termino_busqueda = busqueda if es_url else f"ytsearch1:{busqueda}"
         
         # 1. Extraemos la información sin omitir el procesamiento para obtener la URL real
-        info = await loop.run_in_executor(None, lambda: ytdl.extract_info(termino_busqueda, download=False, process=False))
+        info = await loop.run_in_executor(
+            None, lambda: ytdl.extract_info(termino_busqueda, download=False)
+        )
         
         if not info:
             return await mensaje_espera.edit(content="❌ No se encontró el video.")
 
-        if 'entries' in info:
-            datos_video = next(iter(info['entries']), None)
+        if 'entries' in info and info['entries']:
+            datos_video = info['entries'][0]
         else:
             datos_video = info
 
-        if not datos_video:
-            return await mensaje_espera.edit(content="❌ Sin resultados.")
-
         video_id = datos_video.get('id')
-        url_video = f"https://www.youtube.com/watch?v={video_id}" if video_id else datos_video.get('url')
-
-        info_descarga = await loop.run_in_executor(
-            None, lambda: ytdl.extract_info(url_video, download=True)
-        )
-
-        archivo_local = f"/tmp/{video_id}.mp3"
-            
+        url_video = datos_video.get('webpage_url') or f"https://www.youtube.com/watch?v={video_id}"
         titulo = str(datos_video.get('title', 'Canción Desconocida'))
         segundos = datos_video.get('duration', 0)
         duracion = str(timedelta(seconds=int(segundos))) if segundos else "Desconocida"
         thumbnail = str(datos_video.get('thumbnail', ''))
 
-        # 2. Descarga del archivo de audio a disco
-        try:
-            await loop.run_in_executor(None, lambda: ytdl.extract_info(url_video, download=True))
-        except Exception as download_error:
-            print(f"[Descarga] Nota u observación durante la conversión: {download_error}")
+        await loop.run_in_executor(
+            None, lambda: ytdl.extract_info(url_video, download=True)
+        )
 
-        # 3. Verificación del archivo final en /tmp
-        filename = f"{filename_base}.mp3"
+        filename = f"/tmp/{video_id}.mp3"
+        
         if not os.path.exists(filename):
             # Si FFmpeg extractAudio falló en convertir a MP3, busca las extensiones crudas
             for ext in ['m4a', 'webm', 'opus', 'mp4']:
