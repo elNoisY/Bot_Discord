@@ -147,7 +147,7 @@ YTDL_OPTIONS = {
 }
 
 COOKIES_FILE = "/tmp/cookies.txt"
-cookies_b64 = os.getenv("YOUTUBE_COOKIES_BASE64")
+cookies_b64 = os.getenv("YOUTUBE_COOKIES")
 
 if cookies_b64:
     try:
