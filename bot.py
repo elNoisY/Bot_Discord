@@ -1200,9 +1200,19 @@ async def play(ctx, *, busqueda: str):
         termino_busqueda = busqueda if es_url else f"ytsearch1:{busqueda}"
         
         # 1. Extraemos la información sin omitir el procesamiento para obtener la URL real
-        info = await loop.run_in_executor(
-            None, lambda: ytdl.extract_info(termino_busqueda, download=False)
-        )
+        opts_busqueda = {
+            'extract_flat': True,
+            'skip_download': True,
+            'quiet': True,
+            'no_warnings': True,
+        }
+        if cookiefile_path:
+            opts_busqueda['cookiefile'] = cookiefile_path
+
+        with yt_dlp.YoutubeDL(opts_busqueda) as ytdl_search:
+            info = await loop.run_in_executor(
+                None, lambda: ytdl_search.extract_info(termino_busqueda, download=False)
+            )
         
         if not info:
             return await mensaje_espera.edit(content="❌ No se encontró el video.")
@@ -1219,9 +1229,34 @@ async def play(ctx, *, busqueda: str):
         duracion = str(timedelta(seconds=int(segundos))) if segundos else "Desconocida"
         thumbnail = str(datos_video.get('thumbnail', ''))
 
-        await loop.run_in_executor(
-            None, lambda: ytdl.extract_info(url_video, download=True)
-        )
+        opts_descarga = {
+            'format': 'bestaudio/best/bestvideo+bestaudio', # Fallback si no hay audio puro
+            'outtmpl': '/tmp/%(id)s.%(ext)s',
+            'noplaylist': True,
+            'nocheckcertificate': True,
+            'quiet': True,
+            'no_warnings': True,
+            'source_address': '0.0.0.0',
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['mweb', 'android', 'ios', 'web']
+                }
+            },
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'keepvideo': False,
+        }
+
+        if cookiefile_path:
+            opts_descarga['cookiefile'] = cookiefile_path
+
+        with yt_dlp.YoutubeDL(opts_descarga) as ytdl_dl:
+            await loop.run_in_executor(
+                None, lambda: ytdl_dl.extract_info(url_video, download=True)
+            )
 
         # Base para construir la ruta del archivo
         filename_base = f"/tmp/{video_id}"
