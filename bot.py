@@ -1201,7 +1201,7 @@ async def play(ctx, *, busqueda: str):
         
         # 1. Extraemos la información sin omitir el procesamiento para obtener la URL real
         info = await loop.run_in_executor(
-            None, lambda: ytdl.extract_info(termino_busqueda, download=True)
+            None, lambda: ytdl.extract_info(termino_busqueda, download=False)
         )
         
         if not info:
@@ -1218,6 +1218,10 @@ async def play(ctx, *, busqueda: str):
         segundos = datos_video.get('duration', 0)
         duracion = str(timedelta(seconds=int(segundos))) if segundos else "Desconocida"
         thumbnail = str(datos_video.get('thumbnail', ''))
+
+        await loop.run_in_executor(
+            None, lambda: ytdl.extract_info(url_video, download=True)
+        )
 
         # Base para construir la ruta del archivo
         filename_base = f"/tmp/{video_id}"
