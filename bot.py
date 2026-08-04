@@ -1212,14 +1212,17 @@ async def play(ctx, *, busqueda: str):
         duracion = str(timedelta(seconds=int(segundos))) if segundos else "Desconocida"
         thumbnail = str(datos_video.get('thumbnail', ''))
 
+        # Descargamos el archivo a /tmp/
         await loop.run_in_executor(
             None, lambda: ytdl.extract_info(url_video, download=True)
         )
 
-        filename = f"/tmp/{video_id}.mp3"
+        # Base para construir la ruta del archivo
+        filename_base = f"/tmp/{video_id}"
+        filename = f"{filename_base}.mp3"
         
+        # Si FFmpeg extractAudio falló en convertir a MP3, busca las extensiones crudas
         if not os.path.exists(filename):
-            # Si FFmpeg extractAudio falló en convertir a MP3, busca las extensiones crudas
             for ext in ['m4a', 'webm', 'opus', 'mp4']:
                 posible_archivo = f"{filename_base}.{ext}"
                 if os.path.exists(posible_archivo):
@@ -1261,18 +1264,6 @@ async def play(ctx, *, busqueda: str):
 
     await mensaje_espera.delete()
     await ctx.send(embed=embed_music)
-
-@bot.command(name="pause")
-async def pause(ctx):
-    """Pausa la canción actual."""
-    voice_client = discord.utils.get(bot.voice_clients, guild=ctx.guild)
-    if voice_client and voice_client.is_playing():
-        tiempo_reproducido = time.time() - voice_client.inicio_tiempo
-        voice_client.segundos_acumulados += tiempo_reproducido
-        voice_client.pause()
-        await ctx.send("⏸️ Música pausada.")
-    else:
-        await ctx.send("⚠️ No hay música reproduciéndose actualmente.")
 
 @bot.command(name="resume")
 async def resume(ctx):
