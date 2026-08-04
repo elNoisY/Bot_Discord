@@ -130,7 +130,7 @@ if cookies_b64:
         print(f"⚠️ Error al procesar las cookies: {e}")
 
 YTDL_OPTIONS = {
-    'format': 'bestaudio/best',
+    'format': 'best/bestvideo+bestaudio/worst',
     'outtmpl': '/tmp/%(id)s.%(ext)s',
     'noplaylist': True,
     'nocheckcertificate': True,
