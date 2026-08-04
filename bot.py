@@ -109,6 +109,20 @@ TIENDA_ROLES = {
 
 salas_dinamicas = []
 
+cookies_b64 = os.getenv("YOUTUBE_COOKIES_BASE64")
+cookiefile_path = None
+
+if cookies_b64:
+    try:
+        # Crear un archivo temporal para que yt-dlp lea las cookies
+        temp_cookie_file = tempfile.NamedTemporaryFile(delete=False, mode="wb", suffix=".txt")
+        temp_cookie_file.write(base64.b64decode(cookies_b64))
+        temp_cookie_file.close()
+        cookiefile_path = temp_cookie_file.name
+        print("[COOKIES] Cookies de YouTube cargadas correctamente.")
+    except Exception as e:
+        print(f"[COOKIES] Error al decodificar cookies: {e}")
+
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'outtmpl': '/tmp/%(id)s.%(ext)s',
@@ -118,7 +132,7 @@ YTDL_OPTIONS = {
     'no_warnings': True,
     'default_search': 'ytsearch1',
     'source_address': '0.0.0.0',
-    'cookiefile': COOKIES_FILE,
+    'cookiefile': cookiefile_path,
     'extractor_args': {
         'youtube': {
             'player_client': ['android', 'ios', 'mweb']
