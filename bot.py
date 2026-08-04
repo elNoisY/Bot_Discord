@@ -1230,7 +1230,7 @@ async def play(ctx, *, busqueda: str):
         thumbnail = str(datos_video.get('thumbnail', ''))
 
         opts_descarga = {
-            'format': 'bestaudio/best/ba/b', # Fallback si no hay audio puro
+            'format': 'best', # Fallback si no hay audio puro
             'outtmpl': '/tmp/%(id)s.%(ext)s',
             'noplaylist': True,
             'nocheckcertificate': True,
@@ -1239,7 +1239,7 @@ async def play(ctx, *, busqueda: str):
             'source_address': '0.0.0.0',
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['ios', 'mweb', 'android', 'web'],
+                    'player_client': ['android', 'web', 'mweb'],
                 }
             },
             'postprocessors': [{
