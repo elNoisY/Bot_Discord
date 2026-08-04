@@ -144,7 +144,7 @@ YTDL_OPTIONS = {
     
     'extractor_args': {
         'youtube': {
-            'player_client': ['mweb', 'android', 'ios', 'web']
+            'player_client': ['mweb', 'web', 'android', 'ios']
         }
     },
     'postprocessors': [{
@@ -1202,7 +1202,7 @@ async def play(ctx, *, busqueda: str):
         
         # 1. Extraemos la información sin omitir el procesamiento para obtener la URL real
         info = await loop.run_in_executor(
-            None, lambda: ytdl.extract_info(termino_busqueda, download=False)
+            None, lambda: ytdl.extract_info(termino_busqueda, download=True)
         )
         
         if not info:
