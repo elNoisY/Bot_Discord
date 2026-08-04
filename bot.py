@@ -118,6 +118,7 @@ YTDL_OPTIONS = {
     'no_warnings': True,
     'default_search': 'ytsearch1',
     'source_address': '0.0.0.0',
+    'cookiefile': COOKIES_FILE,
     'extractor_args': {
         'youtube': {
             'player_client': ['android', 'ios', 'mweb']
