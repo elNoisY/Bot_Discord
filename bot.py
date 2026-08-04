@@ -11,6 +11,7 @@ from PIL import Image, ImageDraw, ImageOps, ImageFont
 import io
 import requests
 import asyncio
+import base64
 import yt_dlp
 import sqlite3
 import random
@@ -130,14 +131,22 @@ YTDL_OPTIONS = {
     'keepvideo': False,
 }
 
-if "YOUTUBE_COOKIES" in os.environ and os.getenv("YOUTUBE_COOKIES").strip():
+COOKIES_FILE = "/tmp/cookies.txt"
+cookies_b64 = os.getenv("YOUTUBE_COOKIES_BASE64")
+
+if cookies_b64:
     try:
-        with open("cookies.txt", "w", encoding="utf-8") as f:
-            f.write(os.getenv("YOUTUBE_COOKIES"))
-        YTDL_OPTIONS['cookiefile'] = 'cookies.txt' 
-        print("🍪 Cookies de YouTube configuradas correctamente.")
+        cookies_data = base64.b64decode(cookies_b64).decode("utf-8")
+        
+        # Garantizar encabezado Netscape obligatorio para yt-dlp
+        if not cookies_data.startswith("# Netscape HTTP Cookie File"):
+            cookies_data = "# Netscape HTTP Cookie File\n" + cookies_data
+            
+        with open(COOKIES_FILE, "w", encoding="utf-8") as f:
+            f.write(cookies_data)
+        print("🍪 Cookies decodificadas e inyectadas correctamente.")
     except Exception as e:
-        print(f"⚠️ Error al guardar cookies: {e}")
+        print(f"⚠️ Error al procesar las cookies: {e}")
 
 FFMPEG_LOCAL_OPTIONS = {
     'options': '-vn',
