@@ -109,45 +109,9 @@ TIENDA_ROLES = {
 
 salas_dinamicas = []
 
+COOKIES_FILE = "/tmp/cookies.txt"
 cookies_b64 = os.getenv("YOUTUBE_COOKIES_BASE64")
 cookiefile_path = None
-
-if cookies_b64:
-    try:
-        # Crear un archivo temporal para que yt-dlp lea las cookies
-        temp_cookie_file = tempfile.NamedTemporaryFile(delete=False, mode="wb", suffix=".txt")
-        temp_cookie_file.write(base64.b64decode(cookies_b64))
-        temp_cookie_file.close()
-        cookiefile_path = temp_cookie_file.name
-        print("[COOKIES] Cookies de YouTube cargadas correctamente.")
-    except Exception as e:
-        print(f"[COOKIES] Error al decodificar cookies: {e}")
-
-YTDL_OPTIONS = {
-    'format': 'bestaudio/best',
-    'outtmpl': '/tmp/%(id)s.%(ext)s',
-    'noplaylist': True,
-    'nocheckcertificate': True,
-    'quiet': True,
-    'no_warnings': True,
-    'default_search': 'ytsearch1',
-    'source_address': '0.0.0.0',
-    'cookiefile': cookiefile_path,
-    'extractor_args': {
-        'youtube': {
-            'player_client': ['android', 'ios', 'mweb']
-        }
-    },
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'mp3',
-        'preferredquality': '192',
-    }],
-    'keepvideo': False,
-}
-
-COOKIES_FILE = "/tmp/cookies.txt"
-cookies_b64 = os.getenv("YOUTUBE_COOKIES")
 
 if cookies_b64:
     try:
@@ -159,9 +123,35 @@ if cookies_b64:
             
         with open(COOKIES_FILE, "w", encoding="utf-8") as f:
             f.write(cookies_data)
-        print("🍪 Cookies decodificadas e inyectadas correctamente.")
+            
+        cookiefile_path = COOKIES_FILE
+        print("🍪 Cookies de YouTube decodificadas e inyectadas correctamente.")
     except Exception as e:
         print(f"⚠️ Error al procesar las cookies: {e}")
+
+YTDL_OPTIONS = {
+    'format': 'bestaudio/best',
+    'outtmpl': '/tmp/%(id)s.%(ext)s',
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'ytsearch1',
+    'source_address': '0.0.0.0',
+    'cookiefile': cookiefile_path,  # Apunta directamente a /tmp/cookies.txt
+    'extractor_args': {
+        'youtube': {
+            'player_client': ['ios', 'android', 'mweb', 'tv']
+        }
+    },
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'mp3',
+        'preferredquality': '192',
+    }],
+    'keepvideo': False,
+}
+
 
 FFMPEG_LOCAL_OPTIONS = {
     'options': '-vn',
