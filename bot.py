@@ -140,7 +140,6 @@ YTDL_OPTIONS = {
     'source_address': '0.0.0.0',
     'cookiefile': cookiefile_path,  # Apunta directamente a /tmp/cookies.txt
 
-    'extract_flat': 'in_playlist',
     
     'extractor_args': {
         'youtube': {
@@ -1219,11 +1218,6 @@ async def play(ctx, *, busqueda: str):
         segundos = datos_video.get('duration', 0)
         duracion = str(timedelta(seconds=int(segundos))) if segundos else "Desconocida"
         thumbnail = str(datos_video.get('thumbnail', ''))
-
-        # Descargamos el archivo a /tmp/
-        await loop.run_in_executor(
-            None, lambda: ytdl.extract_info(url_video, download=True)
-        )
 
         # Base para construir la ruta del archivo
         filename_base = f"/tmp/{video_id}"
