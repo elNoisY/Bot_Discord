@@ -1,8 +1,8 @@
-discord.py
+discord.py[voice]
+PyNaCl
+yt-dlp
+edge-tts
+Flask
+static-ffmpeg
 Pillow
 requests
-Flask
-edge-tts
-yt-dlp
-PyNaCl
-static-ffmpeg
