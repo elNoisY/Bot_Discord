@@ -3,7 +3,6 @@ Pillow
 requests
 Flask
 edge-tts
-yt-dlp>=2024.03.10
+yt-dlp
 PyNaCl
 static-ffmpeg
-davey
