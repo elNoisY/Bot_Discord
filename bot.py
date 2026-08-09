@@ -124,7 +124,7 @@ YTDL_OPTIONS = {
         'preferredquality': '192',
     }],
     'keepvideo': False,
-},
+}
 
 FFMPEG_LOCAL_OPTIONS = {
     'options': '-vn',
