@@ -109,51 +109,22 @@ TIENDA_ROLES = {
 
 salas_dinamicas = []
 
-COOKIES_FILE = "/tmp/cookies.txt"
-cookies_b64 = os.getenv("YOUTUBE_COOKIES_BASE64")
-cookiefile_path = None
-
-if cookies_b64:
-    try:
-        cookies_data = base64.b64decode(cookies_b64).decode("utf-8")
-        
-        # Garantizar encabezado Netscape obligatorio para yt-dlp
-        if not cookies_data.startswith("# Netscape HTTP Cookie File"):
-            cookies_data = "# Netscape HTTP Cookie File\n" + cookies_data
-            
-        with open(COOKIES_FILE, "w", encoding="utf-8") as f:
-            f.write(cookies_data)
-            
-        cookiefile_path = COOKIES_FILE
-        print("🍪 Cookies de YouTube decodificadas e inyectadas correctamente.")
-    except Exception as e:
-        print(f"⚠️ Error al procesar las cookies: {e}")
-
 YTDL_OPTIONS = {
-    'format': 'best',
+    'format': 'bestaudio/best',
     'outtmpl': '/tmp/%(id)s.%(ext)s',
     'noplaylist': True,
     'nocheckcertificate': True,
     'quiet': True,
     'no_warnings': True,
-    'default_search': 'ytsearch1',
+    'default_search': 'scsearch1', 
     'source_address': '0.0.0.0',
-    'cookiefile': cookiefile_path,  # Apunta directamente a /tmp/cookies.txt
-
-    
-    'extractor_args': {
-        'youtube': {
-            'player_client': ['mweb', 'web', 'android', 'ios']
-        }
-    },
     'postprocessors': [{
         'key': 'FFmpegExtractAudio',
         'preferredcodec': 'mp3',
         'preferredquality': '192',
     }],
     'keepvideo': False,
-}
-
+},
 
 FFMPEG_LOCAL_OPTIONS = {
     'options': '-vn',
@@ -1180,7 +1151,7 @@ async def tts_say(ctx, *, texto: str):
 
 @bot.command(name="play", aliases=["p"])
 async def play(ctx, *, busqueda: str):
-    """Busca, descarga localmente en /tmp y reproduce audio en el canal de voz."""
+    """Busca en SoundCloud, descarga localmente en /tmp y reproduce audio."""
     if not ctx.author.voice:
         return await ctx.send(f"⚠️ {ctx.author.mention}, ¡debes entrar a un canal de voz primero!")
 
@@ -1192,22 +1163,21 @@ async def play(ctx, *, busqueda: str):
     elif voice_client.channel != canal_voz:
         await voice_client.move_to(canal_voz)
 
-    mensaje_espera = await ctx.send(f"🔍 Buscando **{busqueda}** en YouTube...")
+    mensaje_espera = await ctx.send(f"🟠 Buscando **{busqueda}** en SoundCloud...")
 
     loop = bot.loop or asyncio.get_event_loop()
     try:    
         es_url = busqueda.startswith("http://") or busqueda.startswith("https://")
-        termino_busqueda = busqueda if es_url else f"ytsearch1:{busqueda}"
         
-        # 1. Extraemos la información sin omitir el procesamiento para obtener la URL real
+        # Si no es URL, forza la búsqueda nativa en SoundCloud (scsearch1:)
+        termino_busqueda = busqueda if es_url else f"scsearch1:{busqueda}"
+        
         opts_busqueda = {
             'extract_flat': True,
             'skip_download': True,
             'quiet': True,
             'no_warnings': True,
         }
-        if cookiefile_path:
-            opts_busqueda['cookiefile'] = cookiefile_path
 
         with yt_dlp.YoutubeDL(opts_busqueda) as ytdl_search:
             info = await loop.run_in_executor(
@@ -1215,33 +1185,29 @@ async def play(ctx, *, busqueda: str):
             )
         
         if not info:
-            return await mensaje_espera.edit(content="❌ No se encontró el video.")
+            return await mensaje_espera.edit(content="❌ No se encontró la canción en SoundCloud.")
 
         if 'entries' in info and info['entries']:
-            datos_video = info['entries'][0]
+            datos_track = info['entries'][0]
         else:
-            datos_video = info
+            datos_track = info
 
-        video_id = datos_video.get('id')
-        url_video = datos_video.get('webpage_url') or f"https://www.youtube.com/watch?v={video_id}"
-        titulo = str(datos_video.get('title', 'Canción Desconocida'))
-        segundos = datos_video.get('duration', 0)
+        track_id = datos_track.get('id')
+        url_track = datos_track.get('webpage_url') or datos_track.get('url')
+        titulo = str(datos_track.get('title', 'Canción Desconocida'))
+        uploader = str(datos_track.get('uploader', 'Artista Desconocido'))
+        segundos = datos_track.get('duration', 0)
         duracion = str(timedelta(seconds=int(segundos))) if segundos else "Desconocida"
-        thumbnail = str(datos_video.get('thumbnail', ''))
+        thumbnail = str(datos_track.get('thumbnail', ''))
 
+        # Descarga el audio desde SoundCloud
         opts_descarga = {
-            'format': 'best', # Fallback si no hay audio puro
-            'outtmpl': '/tmp/%(id)s.%(ext)s',
+            'format': 'bestaudio/best',
+            'outtmpl': f'/tmp/{track_id}.%(ext)s',
             'noplaylist': True,
             'nocheckcertificate': True,
             'quiet': True,
             'no_warnings': True,
-            'source_address': '0.0.0.0',
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'web', 'mweb'],
-                }
-            },
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
@@ -1250,56 +1216,48 @@ async def play(ctx, *, busqueda: str):
             'keepvideo': False,
         }
 
-        if cookiefile_path:
-            opts_descarga['cookiefile'] = cookiefile_path
-
         with yt_dlp.YoutubeDL(opts_descarga) as ytdl_dl:
             await loop.run_in_executor(
-                None, lambda: ytdl_dl.extract_info(url_video, download=True)
+                None, lambda: ytdl_dl.extract_info(url_track, download=True)
             )
 
-        # Base para construir la ruta del archivo
-        filename_base = f"/tmp/{video_id}"
+        filename_base = f"/tmp/{track_id}"
         filename = f"{filename_base}.mp3"
         
-        # Si FFmpeg extractAudio falló en convertir a MP3, busca las extensiones crudas
         if not os.path.exists(filename):
-            for ext in ['m4a', 'webm', 'opus', 'mp4']:
+            for ext in ['m4a', 'ogg', 'opus', 'wav']:
                 posible_archivo = f"{filename_base}.{ext}"
                 if os.path.exists(posible_archivo):
                     filename = posible_archivo
                     break
 
         if not os.path.exists(filename):
-            print(f"[DEBUG Render] Archivos presentes en {DOWNLOAD_DIR}: {os.listdir(DOWNLOAD_DIR)}")
-            return await mensaje_espera.edit(content="❌ Error: No se pudo generar el archivo de audio local.")
+            return await mensaje_espera.edit(content="❌ Error: No se pudo procesar la pista de SoundCloud.")
 
     except Exception as e:
         import traceback
         traceback.print_exc()
         return await mensaje_espera.edit(content=f"❌ Error al procesar la canción: {e}")
 
-    # Detener reproducción actual para reemplazar con el nuevo archivo
+    # Reemplazar la pista si ya se reproducía algo
     if voice_client.is_playing() or voice_client.is_paused():
         voice_client.stop()
 
-    # Variables de estado requeridas para tu sistema de !say
     voice_client.is_music = True
     voice_client.archivo_musica = filename
     voice_client.segundos_acumulados = 0 
     voice_client.inicio_tiempo = time.time() 
 
-    # Reproducción con FFmpeg desde la ruta local /tmp
     source = discord.FFmpegPCMAudio(filename, **FFMPEG_LOCAL_OPTIONS)
     voice_client.play(source)
 
     embed_music = discord.Embed(
-        title="🎵 Reproduciendo Ahora",
-        description=f"**[{titulo}]({url_video})**" if url_video else f"**{titulo}**",
-        color=discord.Color.red()
+        title="🟠 Reproduciendo desde SoundCloud",
+        description=f"**[{titulo}]({url_track})**\n👤 *{uploader}*",
+        color=discord.Color.orange()
     )
     embed_music.add_field(name="⏱️ Duración", value=f"`{duracion}`", inline=True)
-    embed_music.add_field(name="👤 Solicitado por", value=ctx.author.mention, inline=True)
+    embed_music.add_field(name="🎧 Pedido por", value=ctx.author.mention, inline=True)
     if thumbnail:
         embed_music.set_thumbnail(url=thumbnail)
 
