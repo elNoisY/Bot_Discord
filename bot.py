@@ -251,6 +251,10 @@ async def recompensa_mensual_autonoma():
 # --- VISTAS Y MODALES (UI) ---
 
 class FormularioSalaModal(discord.ui.Modal, title="Configurar Sala Temporal"):
+    def __init__(self, guild_id: int):
+        super().__init__(timeout=None)
+        self.guild_id = guild_id
+        
     nombre_input = discord.ui.TextInput(
         label="Nombre del canal",
         placeholder="Ej: Sala de Chisme, Bedrock Realms...",
@@ -266,51 +270,70 @@ class FormularioSalaModal(discord.ui.Modal, title="Configurar Sala Temporal"):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        guild = interaction.guild
-        member = interaction.user
+        await interaction.response.defer(ephemeral=True)
+        
+        bot = interaction.client
+        guild = bot.get_guild(self.guild_id)
+
+        if not guild:
+            return await interaction.followup.send("❌ No se pudo encontrar el servidor origen.", ephemeral=True)
+
+        member = guild.get_member(interaction.user.id)
+        if not member:
+            return await interaction.followup.send("❌ No se pudo encontrar tu usuario en el servidor.", ephemeral=True)
 
         nombre_sala = f"🔊 {self.nombre_input.value}"
-        estado_sala = self.estado_input.value
+        estado_sala = self.estado_input.value.strip()
 
+        # Buscar la categoría del canal creador
         canal_crear = guild.get_channel(ID_CANAL_CREAR)
         categoria = canal_crear.category if canal_crear else None
 
         try:
+            # 2. Crear el canal de voz en el servidor
             nueva_sala = await guild.create_voice_channel(
                 name=nombre_sala,
                 category=categoria,
                 reason=f"Sala creada por {member.display_name}"
             )
 
-            if estado_sala:
-                try:
-                    await nueva_sala.edit(status=estado_sala)
-                except Exception:
-                    pass
-
             salas_dinamicas.append(nueva_sala.id)
 
+            # 3. Asignar el estado (Voice Channel Status)
+            if estado_sala:
+                try:
+                    # Petición HTTP directa a la API de Discord para cambiar el estado de voz
+                    await bot.http.request(
+                        discord.http.Route('PUT', '/channels/{channel_id}/voice-status', channel_id=nueva_sala.id),
+                        json={'status': estado_sala}
+                    )
+                except Exception as e:
+                    print(f"⚠️ No se pudo asignar el estado al canal: {e}")
+
+            # 4. Mover al usuario si sigue en algún canal de voz
             if member.voice and member.voice.channel:
                 await member.move_to(nueva_sala)
-                await interaction.response.send_message(f"✅ Sala **{nombre_sala}** creada con éxito.", ephemeral=True)
+                await interaction.followup.send(f"✅ ¡Sala **{nombre_sala}** creada y movido con éxito!", ephemeral=True)
             else:
-                await interaction.response.send_message(
-                    f"✅ Sala creada: {nueva_sala.mention}. Conéctate manualmente ya que saliste del canal.",
+                await interaction.followup.send(
+                    f"✅ Sala **{nombre_sala}** creada. Puedes conectarte directamente aquí: {nueva_sala.mention}",
                     ephemeral=True
                 )
 
         except discord.Forbidden:
-            await interaction.response.send_message("❌ Permisos insuficientes para crear o editar el canal.", ephemeral=True)
+            await interaction.followup.send("❌ Al bot le faltan permisos de `Administrar Canales` o `Mover Miembros`.", ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"❌ Error al crear la sala: `{e}`", ephemeral=True)
+            await interaction.followup.send(f"❌ Ocurrió un error al crear la sala: `{e}`", ephemeral=True)
+
 
 class AbrirModalView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=60)
+    def __init__(self, guild_id: int):
+        super().__init__(timeout=120)
+        self.guild_id = guild_id
 
     @discord.ui.button(label="Personalizar mi Sala ✏️", style=discord.ButtonStyle.success)
     async def abrir_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(FormularioSalaModal())
+        await interaction.response.send_modal(FormularioSalaModal(guild_id=self.guild_id))
 
 class RegistroSorteoModal(discord.ui.Modal, title="Inscripción del Sorteo Premium"):
     nombre_real = discord.ui.TextInput(
@@ -871,6 +894,7 @@ async def on_invite_delete(invite):
 @bot.event
 async def on_voice_state_update(member, before, after):
     if after.channel and after.channel.id == ID_CANAL_PANEL_VOZ:
+        guild_id = member.guild.id
         try: 
             await member.move_to(None)
         except Exception:
