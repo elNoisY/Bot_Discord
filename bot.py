@@ -245,20 +245,7 @@ async def recompensa_mensual_autonoma():
         
     conn.close()
 
-@bot.event
-async def on_ready():
-    bot.add_view(TicketConsultaView())
-    bot.add_view(SalaVozView())
-    bot.add_view(SorteoView())
 
-    await cargar_invitaciones()
-
-    print(f"✅ Bot conectado como {bot.user}")
-    
-    if not promocion_diaria.is_running():
-        promocion_diaria.start()
-    if not recompensa_mensual_autonoma.is_running():
-        recompensa_mensual_autonoma.start()
 
 # --- VISTAS Y MODALES (UI) ---
 
@@ -585,24 +572,77 @@ class SalaVozView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Crear Sala de Voz", style=discord.ButtonStyle.primary, emoji="🔊", custom_id="btn_crear_sala_voz")
+    @discord.ui.button(label="Crear Sala Temporal 🔊", style=discord.ButtonStyle.primary, emoji="➕", custom_id="btn_crear_sala_voz_visual")
     async def crear_sala(self, interaction: discord.Interaction, button: discord.ui.Button):
         guild = interaction.guild
+        member = interaction.user
+
+        if not member.voice or not member.voice.channel:
+            return await interaction.response.send_message(
+                "⚠️ **Para crear tu sala debes estar conectado a un canal de voz primero.**\n"
+                "Conéctate a cualquier canal de voz e inténtalo de nuevo para moverte automáticamente.",
+                ephemeral = True
+            )
 
         nombre_canal = f"🔊 Sala de {interaction.user.display_name}"
 
         try:
-            nuevo_canal = await guild.create_voice_channel(name=nombre_canal)
+            await interaction.response.defer(ephemeral = True)
+
+            categoria_destino = interaction.channel.category if hasattr(interaction.channel, 'category') else None
+            
+            nuevo_canal = await guild.create_voice_channel(
+                name=nombre_canal,
+                category = categoria_destino,
+                reason=f"Sala temporal creada por {member.display_name}"
+            )
             salas_dinamicas.append(nuevo_canal.id)
 
-            await interaction.response.send_message(f"✅ Tu sala de voz temporal ha sido creada: {nuevo_canal.mention}\n*Se eliminará automáticamente cuando quede vacía.*", ephemeral=True)
+            await member.move_to(nuevo_canal, reason="Movimiento automático a su nueva sala de voz temporal.")
+
+            await interaction.followup.send(
+                f"✅ ¡Hecho! Te he movido obligatoriamente a tu sala: {nuevo_canal.mention}", 
+                ephemeral=True
+            )
         except discord.Forbidden:
             await interaction.response.send_message("❌ El bot no tiene permisos para crear canales de voz.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(f"❌ Ocurrió un error: {e}", ephemeral=True)
 
 # --- EVENTOS DEL BOT ---
+@bot.event
+async def on_ready():
+    bot.add_view(TicketConsultaView())
+    bot.add_view(SalaVozView())
+    bot.add_view(SorteoView())
 
+    await cargar_invitaciones()
+
+    canal_panel = bot.get_channel(ID_CANAL_PANEL_VOZ)
+    if canal_panel:
+        embed_panel = discord.Embed(
+            title = "🔊Central de Sala de Voz temporales",
+            description = "Presiona el botón **Crear Sala Temporal 🔊** de abajo para abrir una sala privada instantánea.\n\n"
+                        "✨ **Reglas automáticas:**\n"
+                        "• Tu sala permanecerá mientras haya usuarios dentro.\n"
+                        "• **Se borrará automáticamente** cuando la última persona se desconecte.",
+            color = discord.Color.blurple()
+        )
+        embed_panel.set_footer(text= "Platano-Bot • Sistema dinámico de Voz")
+
+        try:
+            await canal_panel.send(embed=embed_panel, view=SalaVozView())
+            print(f"✅ Panel de salas de voz publicado en el canal #{canal_panel.name}")
+        except Exception as e:
+            print(f"⚠️ No se pudo enviar el panel de salas de voz: {e}")
+            
+    print(f"✅ Bot conectado como {bot.user}")
+    
+    if not promocion_diaria.is_running():
+        promocion_diaria.start()
+    if not recompensa_mensual_autonoma.is_running():
+        recompensa_mensual_autonoma.start()
+        
 @bot.event
 async def on_member_join(member):
     ID_DEL_CANAL = 1509365073166991420
