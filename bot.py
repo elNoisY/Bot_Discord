@@ -249,9 +249,8 @@ async def recompensa_mensual_autonoma():
 
 
 # --- VISTAS Y MODALES (UI) ---
-
 class FormularioEditarSalaModal(discord.ui.Modal, title="Configurar Sala Temporal"):
-   def __init__(self, canal_id: int):
+    def __init__(self, canal_id: int):
         super().__init__(timeout=None)
         self.canal_id = canal_id
 
@@ -261,7 +260,7 @@ class FormularioEditarSalaModal(discord.ui.Modal, title="Configurar Sala Tempora
         max_length=30,
         required=True
     )
-    
+
     estado_input = discord.ui.TextInput(
         label="Estado / Descripción (se muestra abajo)",
         placeholder="Ej: Perú es clave, Solo micro...",
@@ -300,8 +299,7 @@ class FormularioEditarSalaModal(discord.ui.Modal, title="Configurar Sala Tempora
             await interaction.followup.send("❌ El bot no tiene permisos para editar este canal.", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ Error al editar: `{e}`", ephemeral=True)
-
-
+            
 class ControlSalaView(discord.ui.View):
     def __init__(self, canal_id: int):
         super().__init__(timeout=None)
