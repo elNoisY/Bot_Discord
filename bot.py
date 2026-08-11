@@ -163,6 +163,7 @@ ID_CANAL_ANUNCIO_COMPRAS = 122321331111111111
 ID_CANAL_INVITACIONES = 223231322222222222222222
 Precio_sorteo = 2000
 ID_canal_LOGS_sorteo = 1111111111
+ID_CANAL_PANEL_VOZ=745793365534179370
 
 async def cargar_invitaciones():
     """Cargar todas las invitaciones del caché"""
