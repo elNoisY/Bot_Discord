@@ -808,7 +808,7 @@ async def on_invite_delete(invite):
 
 @bot.event
 async def on_voice_state_update(member, before, after):
-    if after.channel and after.channel.id == ID_CANAL_CREAR:
+    if after.channel and after.channel.id == ID_CANAL_PANEL_VOZ:
         guild = member.guild
         categoria = after.channel.category
 
