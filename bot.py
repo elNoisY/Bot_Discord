@@ -163,7 +163,7 @@ ID_CANAL_ANUNCIO_COMPRAS = 122321331111111111
 ID_CANAL_INVITACIONES = 223231322222222222222222
 Precio_sorteo = 2000
 ID_canal_LOGS_sorteo = 1111111111
-ID_CANAL_PANEL_VOZ=745793365534179370
+ID_CANAL_PANEL_VOZ=1536852074753695774
 
 async def cargar_invitaciones():
     """Cargar todas las invitaciones del caché"""
@@ -808,17 +808,35 @@ async def on_invite_delete(invite):
 
 @bot.event
 async def on_voice_state_update(member, before, after):
-    if before.channel is not None:
-        canal_previo = before.channel
-        if canal_previo.id in salas_dinamicas and len(canal_previo.members) == 0:
+    if after.channel and after.channel.id == ID_CANAL_CREAR:
+        guild = member.guild
+        categoria = after.channel.category
+
+        nombre_sala = f"🔊 Sala de {member.display_name}"
+
+        try:
+            nueva_sala = await guild.create_voice_channel(
+                name=nombre_sala,
+                category=categoria,
+                reason="Canal de voz temporal (Join-to-Create)"
+            )
+
+            salas_dinamicas.append(nueva_sala.id)
+
+            await member.move_to(nueva_sala)
+
+        except discord.Forbidden:
+            print("❌ Error: Al bot le falta el permiso 'Mover Miembros' o 'Administrar Canales'.")
+        except Exception as e:
+            print(f"❌ Error al generar la sala temporal: {e}")
+
+    if before.channel and before.channel.id in salas_dinamicas:
+        if len(before.channel.members) == 0:
+            salas_dinamicas.remove(before.channel.id)
             try:
-                await canal_previo.delete(reason="Sala dinámica vacía.")
-                salas_dinamicas.remove(canal_previo.id)
-                print(f"🗑️ Sala de voz temporal '{canal_previo.name}' eliminada por quedarse vacía.")
-            except discord.Forbidden:
-                print(f"❌ Sin permisos para eliminar la sala de voz vacía: {canal_previo.name}")
+                await before.channel.delete(reason="Canal temporal vacío")
             except Exception as e:
-                print(f"❌ Error al intentar borrar sala dinámica: {e}")
+                print(f"❌ No se pudo eliminar el canal temporal: {e}")
 
 # Manejador Unificado de Mensajes
 @bot.event
