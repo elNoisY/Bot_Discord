@@ -1445,26 +1445,24 @@ async def lanzar_sorteo(ctx):
 # Se obtiene el token desde las variables de entorno de Render o local.
 TOKEN = os.getenv("DISCORD_TOKEN", "MTUwOTM4MjI5NTkwNjQxODc4OA.GrcSZz.k4p7ILmd9ftUzG8EWIu-oyQ5BKMRZXDVymWk2U")
 
-def iniciar_bot():
-    try:
-        bot.run(TOKEN)
-    except Exception as e:
-        print(f"❌ Error al arrancar el bot de Discord: {e}")
+def ejecutar_flask():
+    """Servidor web secundario para Render"""
+    puerto = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=puerto)
 
 if __name__ == "__main__":
     if TOKEN:
-        print("🚀 Iniciando procesos en paralelo de Plátano-Bot...")
+        print("🚀 Iniciando servidor web Flask en segundo plano...")
+        # 1. Flask en Hilo Secundario
+        hilo_flask = threading.Thread(target=ejecutar_flask)
+        hilo_flask.daemon = True
+        hilo_flask.start()
         
-        # 1. Hilo secundario para Discord Bot
-        t = threading.Thread(target=iniciar_bot)
-        t.daemon = True
-        t.start()
-        
-        # 2. Hilo principal para servidor Flask (Render detecta dinámicamente PORT)
-        puerto = int(os.environ.get("PORT", 10000))
+        # 2. Discord Bot en Hilo Principal
+        print("🚀 Conectando Bot a Discord...")
         try:
-            app.run(host='0.0.0.0', port=puerto, debug=False, use_reloader=False)
-        except KeyboardInterrupt:
-            print("\n🛑 Servidor apagado localmente por el usuario.")
+            bot.run(TOKEN)
+        except Exception as e:
+            print(f"❌ Error al arrancar el bot de Discord: {e}")
     else:
-        print("❌ ERROR: No se ha detectado la variable de entorno DISCORD_TOKEN.")
+        print("❌ No se encontró un token válido para el bot.")
