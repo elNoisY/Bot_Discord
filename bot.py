@@ -1,4 +1,4 @@
-import discord
+.import discord
 from discord.ext import commands, tasks
 import re
 import time
@@ -17,7 +17,7 @@ import sqlite3
 import random
 import static_ffmpeg
 
-
+v
 DOWNLOAD_DIR = "/tmp/bot_audio"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 static_ffmpeg.add_paths()
@@ -331,7 +331,7 @@ class ControlSalaView(discord.ui.View):
         emoji="👤",
         row=2
     )
-    async def lista_confiados(self, interaction: discord.Interaction, button: ui.Button):
+    async def lista_confiados(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal("👥 Gestión de usuarios permitidos en desarrollo...", ephemeral=True)
 
     @discord.ui.button(
