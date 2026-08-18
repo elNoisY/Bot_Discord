@@ -17,7 +17,6 @@ import sqlite3
 import random
 import static_ffmpeg
 
-v
 DOWNLOAD_DIR = "/tmp/bot_audio"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 static_ffmpeg.add_paths()
