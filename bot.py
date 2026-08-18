@@ -331,7 +331,7 @@ class ControlSalaView(discord.ui.View):
         emoji="👤",
         row=2
     )
-    async def lista_confiados(self, interaction: discord.Interaction, button: ui.Button):
+    async def lista_confiados(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal("👥 Gestión de usuarios permitidos en desarrollo...", ephemeral=True)
 
     @discord.ui.button(
