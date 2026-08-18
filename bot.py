@@ -17,6 +17,7 @@ import sqlite3
 import random
 import static_ffmpeg
 
+
 DOWNLOAD_DIR = "/tmp/bot_audio"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 static_ffmpeg.add_paths()
@@ -162,9 +163,7 @@ ID_CANAL_ANUNCIO_COMPRAS = 122321331111111111
 ID_CANAL_INVITACIONES = 223231322222222222222222
 Precio_sorteo = 2000
 ID_canal_LOGS_sorteo = 1111111111
-ID_CANAL_PANEL_VOZ = 1536852074753695774
-
-BANNER_URL_PANEL = "https://i.pinimg.com/1200x/16/be/c9/16bec9a832a1b90ca555c363c4837401.jpg"
+ID_CANAL_PANEL_VOZ=1536852074753695774
 
 async def cargar_invitaciones():
     """Cargar todas las invitaciones del caché"""
@@ -306,52 +305,10 @@ class ControlSalaView(discord.ui.View):
         super().__init__(timeout=None)
         self.canal_id = canal_id
 
-    @discord.ui.button(
-        label="Ajustes generales",
-        style=discord.ButtonStyle.secondary,
-        emoji="⚙️",
-        row=0
-    )
-    async def ajustes_generales(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Abre el modal dinámico enviando el ID de la sala actual
+    @discord.ui.button(label="Personalizar Sala ✏️", style=discord.ButtonStyle.primary, custom_id="btn_editar_sala_temp")
+    async def abrir_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(FormularioEditarSalaModal(canal_id=self.canal_id))
-        
-    @discord.ui.button(
-        label="Administrar Usuarios",
-        style=discord.ButtonStyle.secondary,
-        emoji="🔨",
-        row=1
-    )
-    async def admin_usuarios(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("🛠️ Menú de administración de usuarios en desarrollo...", ephemeral=True)
 
-    @discord.ui.button(
-        label="Gestionar lista de confiados",
-        style=discord.ButtonStyle.secondary,
-        emoji="👤",
-        row=2
-    )
-    async def lista_confiados(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("👥 Gestión de usuarios permitidos en desarrollo...", ephemeral=True)
-
-    @discord.ui.button(
-        label="Reclamar canal sin propietario", 
-        style=discord.ButtonStyle.secondary, 
-        emoji="👑", 
-        row=3
-    )
-    async def reclamar_canal(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("👑 Has reclamado la propiedad de esta sala.", ephemeral=True)
-
-    @discord.ui.button(
-        label="Habilitar reproductor de música", 
-        style=discord.ButtonStyle.success, 
-        emoji="🔊", 
-        row=4
-    )
-    async def modo_musica(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("🎵 Reproductor de música activado en la sala.", ephemeral=True)
-        
 class RegistroSorteoModal(discord.ui.Modal, title="Inscripción del Sorteo Premium"):
     nombre_real = discord.ui.TextInput(
         label="Nombre del usuario",
@@ -910,13 +867,12 @@ async def on_invite_delete(invite):
 
 @bot.event
 async def on_voice_state_update(member, before, after):
-    # Detecta cuándo entra al canal principal para crear sala
     if after.channel and after.channel.id == ID_CANAL_PANEL_VOZ:
         guild = member.guild
         categoria = after.channel.category
         
         try:
-            # 1. Crear canal de voz temporal
+            # 1. Crear canal inmediatamente
             nueva_sala = await guild.create_voice_channel(
                 name=f"🔊 Sala de {member.display_name}",
                 category=categoria,
@@ -924,38 +880,22 @@ async def on_voice_state_update(member, before, after):
             )
             salas_dinamicas.append(nueva_sala.id)
 
-            # 2. Mover al usuario a la nueva sala
+            # 2. Mover al usuario de inmediato sin sacarlo de voz
             await member.move_to(nueva_sala)
 
-            # 3. Formatear fechas para el panel de información
-            fecha_creacion = member.created_at.strftime("%d/%m/%Y")
-            fecha_union = member.joined_at.strftime("%d/%m/%Y %H:%M") if member.joined_at else "Desconocida"
-
+            # 3. Mandar el botón al chat integrado de la propia sala creada
             embed = discord.Embed(
-                title="⚙️ Configuración",
-                color=discord.Color.from_rgb(118, 185, 0)
+                title="🎙️ ¡Bienvenido a tu sala temporal!",
+                description="Presiona el botón de abajo si quieres cambiar el **Nombre** o el **Estado** del canal.",
+                color=discord.Color.green()
             )
-
-            descripcion_propietario = (
-                f"**PROPIETARIO DEL CANAL**\n\n"
-                f"👤 {member.mention} • `{member.name}`\n\n"
-                f"📅 **Cuenta creada:** `{fecha_creacion}`\n"
-                f"🕒 **Unión:** `{fecha_union}`"
-            )
-
-            embed.description = descripcion_propietario
-            embed.set_thumbnail(url=member.display_avatar.url)
-            embed.set_image(url=BANNER_URL_PANEL)
-
-            # 4. Enviar el panel con los botones al chat del canal de voz recién creado
             await nueva_sala.send(embed=embed, view=ControlSalaView(canal_id=nueva_sala.id))
 
         except discord.Forbidden:
             print("❌ Falta permiso 'Mover Miembros' o 'Administrar Canales'.")
         except Exception as e:
             print(f"❌ Error en la creación de la sala: {e}")
-
-    # Eliminar el canal cuando se queda vacío
+            
     if before.channel and before.channel.id in salas_dinamicas:
         if len(before.channel.members) == 0:
             salas_dinamicas.remove(before.channel.id)
@@ -1503,7 +1443,7 @@ async def lanzar_sorteo(ctx):
 
 # --- EJECUCIÓN SEGURA ---
 # Se obtiene el token desde las variables de entorno de Render o local.
-TOKEN = os.getenv("DISCORD_TOKEN", "MTUwOTM4MjI5NTkwNjQxODc4OA.GUYSh3.f8rtuJWsLreP6GDLBEjK7Zhwz-vkeh6Y7XijSg")
+TOKEN = os.getenv("DISCORD_TOKEN", "MTUwOTM4MjI5NTkwNjQxODc4OA.GrcSZz.k4p7ILmd9ftUzG8EWIu-oyQ5BKMRZXDVymWk2U")
 
 def iniciar_bot():
     try:
