@@ -20,6 +20,7 @@ import static_ffmpeg
 
 DOWNLOAD_DIR = "/tmp/bot_audio"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+static_ffmpeg.add_paths()
 
 # --- CONFIGURACIÓN DE FLASK (Servidor Web para Render / Mantener Vivo) ---
 app = Flask('')
@@ -330,7 +331,7 @@ class ControlSalaView(discord.ui.View):
         emoji="👤",
         row=2
     )
-    async def lista_confiados(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def lista_confiados(self, interaction: discord.Interaction, button: ui.Button):
         await interaction.response.send_modal("👥 Gestión de usuarios permitidos en desarrollo...", ephemeral=True)
 
     @discord.ui.button(
@@ -719,8 +720,6 @@ async def on_ready():
     bot.add_view(TicketConsultaView())
     bot.add_view(SalaVozView())
     bot.add_view(SorteoView())
-
-    static_ffmpeg.add_paths()
 
     await cargar_invitaciones()
 
@@ -1503,30 +1502,28 @@ async def lanzar_sorteo(ctx):
 
 # --- EJECUCIÓN SEGURA ---
 # Se obtiene el token desde las variables de entorno de Render o local.
-TOKEN = os.getenv("DISCORD_TOKEN", "MTUwOTM4MjI5NTkwNjQxODc4OA.GrcSZz.k4p7ILmd9ftUzG8EWIu-oyQ5BKMRZXDVymWk2U")
+TOKEN = os.getenv("DISCORD_TOKEN")
 
-def ejecutar_flask():
-    """Ejecuta el servidor Flask en un hilo secundario para no bloquear a Discord."""
-    puerto = int(os.environ.get("PORT", 10000))
-    # Desactivar logs innecesarios de werkzeug para limpiar el output de Render
-    import logging
-    log = logging.getLogger('werkzeug')
-    log.setLevel(logging.ERROR)
-    
-    app.run(host='0.0.0.0', port=puerto, debug=False, use_reloader=False)
+def iniciar_bot():
+    try:
+        bot.run(TOKEN)
+    except Exception as e:
+        print(f"❌ Error al arrancar el bot de Discord: {e}")
 
 if __name__ == "__main__":
     if TOKEN:
-        print("🚀 1. Iniciando servidor Web Flask en segundo plano...", flush=True)
-        # Flask debe ir en el hilo secundario (daemon = True)
-        hilo_web = threading.Thread(target=ejecutar_flask, daemon=True)
-        hilo_web.start()
+        print("🚀 Iniciando procesos en paralelo de Plátano-Bot...")
         
-        print("🚀 2. Conectando Plátano-Bot a Discord (Hilo Principal)...", flush=True)
+        # 1. Hilo secundario para Discord Bot
+        t = threading.Thread(target=iniciar_bot)
+        t.daemon = True
+        t.start()
+        
+        # 2. Hilo principal para servidor Flask (Render detecta dinámicamente PORT)
+        puerto = int(os.environ.get("PORT", 10000))
         try:
-            # Discord.py DEBE ejecutarse en el hilo principal
-            bot.run(TOKEN)
-        except Exception as e:
-            print(f"❌ Error crítico al iniciar el bot de Discord: {e}", flush=True)
+            app.run(host='0.0.0.0', port=puerto, debug=False, use_reloader=False)
+        except KeyboardInterrupt:
+            print("\n🛑 Servidor apagado localmente por el usuario.")
     else:
-        print("❌ ERROR: No se ha detectado el token de Discord.", flush=True)
+        print("❌ ERROR: No se ha detectado la variable de entorno DISCORD_TOKEN.")
