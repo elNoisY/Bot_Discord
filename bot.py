@@ -307,12 +307,13 @@ class ControlSalaView(discord.ui.View):
         self.canal_id = canal_id
 
     @discord.ui.button(
-        label="Ajustes generaleas",
+        label="Ajustes generales",
         style=discord.ButtonStyle.secondary,
         emoji="⚙️",
         row=0
     )
     async def ajustes_generales(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Abre el modal dinámico enviando el ID de la sala actual
         await interaction.response.send_modal(FormularioEditarSalaModal(canal_id=self.canal_id))
         
     @discord.ui.button(
@@ -322,7 +323,7 @@ class ControlSalaView(discord.ui.View):
         row=1
     )
     async def admin_usuarios(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal("🛠️Menú de administradores de usuarios en desarrollo...", ephemeral=True)
+        await interaction.response.send_message("🛠️ Menú de administración de usuarios en desarrollo...", ephemeral=True)
 
     @discord.ui.button(
         label="Gestionar lista de confiados",
@@ -331,7 +332,7 @@ class ControlSalaView(discord.ui.View):
         row=2
     )
     async def lista_confiados(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal("👥 Gestión de usuarios permitidos en desarrollo...", ephemeral=True)
+        await interaction.response.send_message("👥 Gestión de usuarios permitidos en desarrollo...", ephemeral=True)
 
     @discord.ui.button(
         label="Reclamar canal sin propietario", 
@@ -351,8 +352,6 @@ class ControlSalaView(discord.ui.View):
     async def modo_musica(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("🎵 Reproductor de música activado en la sala.", ephemeral=True)
         
-    
-
 class RegistroSorteoModal(discord.ui.Modal, title="Inscripción del Sorteo Premium"):
     nombre_real = discord.ui.TextInput(
         label="Nombre del usuario",
@@ -911,12 +910,13 @@ async def on_invite_delete(invite):
 
 @bot.event
 async def on_voice_state_update(member, before, after):
+    # Detecta cuándo entra al canal principal para crear sala
     if after.channel and after.channel.id == ID_CANAL_PANEL_VOZ:
         guild = member.guild
         categoria = after.channel.category
         
         try:
-            # 1. Crear canal inmediatamente
+            # 1. Crear canal de voz temporal
             nueva_sala = await guild.create_voice_channel(
                 name=f"🔊 Sala de {member.display_name}",
                 category=categoria,
@@ -924,15 +924,16 @@ async def on_voice_state_update(member, before, after):
             )
             salas_dinamicas.append(nueva_sala.id)
 
-            # 2. Mover al usuario de inmediato sin sacarlo de voz
+            # 2. Mover al usuario a la nueva sala
             await member.move_to(nueva_sala)
 
+            # 3. Formatear fechas para el panel de información
             fecha_creacion = member.created_at.strftime("%d/%m/%Y")
             fecha_union = member.joined_at.strftime("%d/%m/%Y %H:%M") if member.joined_at else "Desconocida"
 
             embed = discord.Embed(
                 title="⚙️ Configuración",
-                color = discord.Color.from_rgb(118, 185,0)
+                color=discord.Color.from_rgb(118, 185, 0)
             )
 
             descripcion_propietario = (
@@ -944,16 +945,17 @@ async def on_voice_state_update(member, before, after):
 
             embed.description = descripcion_propietario
             embed.set_thumbnail(url=member.display_avatar.url)
-            embed.set_image(url="https://i.pinimg.com/1200x/16/be/c9/16bec9a832a1b90ca555c363c4837401.jpg")
+            embed.set_image(url=BANNER_URL_PANEL)
 
+            # 4. Enviar el panel con los botones al chat del canal de voz recién creado
             await nueva_sala.send(embed=embed, view=ControlSalaView(canal_id=nueva_sala.id))
-        
 
         except discord.Forbidden:
             print("❌ Falta permiso 'Mover Miembros' o 'Administrar Canales'.")
         except Exception as e:
             print(f"❌ Error en la creación de la sala: {e}")
-            
+
+    # Eliminar el canal cuando se queda vacío
     if before.channel and before.channel.id in salas_dinamicas:
         if len(before.channel.members) == 0:
             salas_dinamicas.remove(before.channel.id)
