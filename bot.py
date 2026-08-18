@@ -165,6 +165,8 @@ Precio_sorteo = 2000
 ID_canal_LOGS_sorteo = 1111111111
 ID_CANAL_PANEL_VOZ=1536852074753695774
 
+BANNER_URL_PANEL = "https://i.pinimg.com/1200x/16/be/c9/16bec9a832a1b90ca555c363c4837401.jpg"
+
 async def cargar_invitaciones():
     """Cargar todas las invitaciones del caché"""
     for guild in bot.guilds:
@@ -305,9 +307,52 @@ class ControlSalaView(discord.ui.View):
         super().__init__(timeout=None)
         self.canal_id = canal_id
 
-    @discord.ui.button(label="Personalizar Sala ✏️", style=discord.ButtonStyle.primary, custom_id="btn_editar_sala_temp")
-    async def abrir_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(
+        label="Ajustes generaleas",
+        style=discord.ButtonStyle.secondary,
+        emoji="⚙️",
+        row=0
+    )
+    async def ajustes_generales(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(FormularioEditarSalaModal(canal_id=self.canal_id))
+        
+    @discord.ui.button(
+        label="Administrar Usuarios",
+        style=discord.ButtonStyle.secondary,
+        emoji="🔨",
+        row=1
+    )
+    async def admin_usuarios(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal("🛠️Menú de administradores de usuarios en desarrollo...", ephemeral=True)
+
+    @discord.ui.button(
+        label="Gestionar lista de confiados",
+        style=discord.ButtonStyle.secondary,
+        emoji="👤",
+        row=2
+    )
+    async def lista_confiados(self, interaction: discord.Interaction, button: ui.Button):
+        await interaction.response.send_modal("👥 Gestión de usuarios permitidos en desarrollo...", ephemeral=True)
+
+    @discord.ui.button(
+        label="Reclamar canal sin propietario", 
+        style=discord.ButtonStyle.secondary, 
+        emoji="👑", 
+        row=3
+    )
+    async def reclamar_canal(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("👑 Has reclamado la propiedad de esta sala.", ephemeral=True)
+
+    @discord.ui.button(
+        label="Habilitar reproductor de música", 
+        style=discord.ButtonStyle.success, 
+        emoji="🔊", 
+        row=4
+    )
+    async def modo_musica(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("🎵 Reproductor de música activado en la sala.", ephemeral=True)
+        
+    
 
 class RegistroSorteoModal(discord.ui.Modal, title="Inscripción del Sorteo Premium"):
     nombre_real = discord.ui.TextInput(
@@ -883,13 +928,27 @@ async def on_voice_state_update(member, before, after):
             # 2. Mover al usuario de inmediato sin sacarlo de voz
             await member.move_to(nueva_sala)
 
-            # 3. Mandar el botón al chat integrado de la propia sala creada
+            fecha_creacion = member.created_at.strftime("%d/%m/%Y")
+            fecha_union = member.joined_at.strftime("%d/%m/%Y %H:%M") if member.joined_at else "Desconocida"
+
             embed = discord.Embed(
-                title="🎙️ ¡Bienvenido a tu sala temporal!",
-                description="Presiona el botón de abajo si quieres cambiar el **Nombre** o el **Estado** del canal.",
-                color=discord.Color.green()
+                title="⚙️ Configuración",
+                color = discord.Color.from_rgb(118, 185,0)
             )
+
+            descripcion_propietario = (
+                f"**PROPIETARIO DEL CANAL**\n\n"
+                f"👤 {member.mention} • `{member.name}`\n\n"
+                f"📅 **Cuenta creada:** `{fecha_creacion}`\n"
+                f"🕒 **Unión:** `{fecha_union}`"
+            )
+
+            embed.description = descripcion_propietario
+            embed.set_thumbnail(url=member.display_avatar.url)
+            embed.set_image(url="https://i.pinimg.com/1200x/16/be/c9/16bec9a832a1b90ca555c363c4837401.jpg")
+
             await nueva_sala.send(embed=embed, view=ControlSalaView(canal_id=nueva_sala.id))
+        
 
         except discord.Forbidden:
             print("❌ Falta permiso 'Mover Miembros' o 'Administrar Canales'.")
@@ -1445,24 +1504,26 @@ async def lanzar_sorteo(ctx):
 # Se obtiene el token desde las variables de entorno de Render o local.
 TOKEN = os.getenv("DISCORD_TOKEN", "MTUwOTM4MjI5NTkwNjQxODc4OA.GrcSZz.k4p7ILmd9ftUzG8EWIu-oyQ5BKMRZXDVymWk2U")
 
-def ejecutar_flask():
-    """Servidor web secundario para Render"""
-    puerto = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=puerto)
+def iniciar_bot():
+    try:
+        bot.run(TOKEN)
+    except Exception as e:
+        print(f"❌ Error al arrancar el bot de Discord: {e}")
 
 if __name__ == "__main__":
     if TOKEN:
-        print("🚀 Iniciando servidor web Flask en segundo plano...")
-        # 1. Flask en Hilo Secundario
-        hilo_flask = threading.Thread(target=ejecutar_flask)
-        hilo_flask.daemon = True
-        hilo_flask.start()
+        print("🚀 Iniciando procesos en paralelo de Plátano-Bot...")
         
-        # 2. Discord Bot en Hilo Principal
-        print("🚀 Conectando Bot a Discord...")
+        # 1. Hilo secundario para Discord Bot
+        t = threading.Thread(target=iniciar_bot)
+        t.daemon = True
+        t.start()
+        
+        # 2. Hilo principal para servidor Flask (Render detecta dinámicamente PORT)
+        puerto = int(os.environ.get("PORT", 10000))
         try:
-            bot.run(TOKEN)
-        except Exception as e:
-            print(f"❌ Error al arrancar el bot de Discord: {e}")
+            app.run(host='0.0.0.0', port=puerto, debug=False, use_reloader=False)
+        except KeyboardInterrupt:
+            print("\n🛑 Servidor apagado localmente por el usuario.")
     else:
-        print("❌ No se encontró un token válido para el bot.")
+        print("❌ ERROR: No se ha detectado la variable de entorno DISCORD_TOKEN.")
