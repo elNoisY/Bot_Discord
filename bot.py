@@ -1501,29 +1501,43 @@ async def lanzar_sorteo(ctx):
         pass
 
 # --- EJECUCIÓN SEGURA ---
-# Se obtiene el token desde las variables de entorno de Render o local.
-TOKEN = os.getenv("DISCORD_TOKEN", "MTUwOTM4MjI5NTkwNjQxODc4OA.GrcSZz.k4p7ILmd9ftUzG8EWIu-oyQ5BKMRZXDVymWk2U")
+TOKEN = os.getenv("DISCORD_TOKEN")
 
-def iniciar_bot():
-    try:
-        bot.run(TOKEN)
-    except Exception as e:
-        print(f"❌ Error al arrancar el bot de Discord: {e}")
+def ejecutar_flask():
+    """Servidor Web secundario en segundo plano para Render"""
+    puerto = int(os.environ.get("PORT", 10000))
+    import logging
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.ERROR)
+    app.run(host='0.0.0.0', port=puerto, debug=False, use_reloader=False)
+
+def iniciar_discord_con_retry():
+    """Conecta el bot utilizando la variable de entorno"""
+    import time
+    while True:
+        try:
+            print("🚀 Conectando Plátano-Bot a Discord con el nuevo TOKEN...", flush=True)
+            bot.run(TOKEN)
+            break
+        except Exception as e:
+            err_msg = str(e)
+            print(f"⚠️ Error al conectar con Discord: {err_msg}", flush=True)
+            if "429" in err_msg or "rate limit" in err_msg.lower() or "cloudflare" in err_msg.lower():
+                print("⏳ Rate Limit detectado. Esperando 60 segundos antes de reintentar...", flush=True)
+                time.sleep(60)
+            else:
+                print("⏳ Reintentando conexión en 15 segundos...", flush=True)
+                time.sleep(15)
 
 if __name__ == "__main__":
     if TOKEN:
-        print("🚀 Iniciando procesos en paralelo de Plátano-Bot...")
+        # 1. Iniciar servidor Flask en hilo secundario (Pasa el Health Check de Render)
+        print("🚀 1. Iniciando servidor Web Flask...", flush=True)
+        hilo_web = threading.Thread(target=ejecutar_flask, daemon=True)
+        hilo_web.start()
         
-        # 1. Hilo secundario para Discord Bot
-        t = threading.Thread(target=iniciar_bot)
-        t.daemon = True
-        t.start()
-        
-        # 2. Hilo principal para servidor Flask (Render detecta dinámicamente PORT)
-        puerto = int(os.environ.get("PORT", 10000))
-        try:
-            app.run(host='0.0.0.0', port=puerto, debug=False, use_reloader=False)
-        except KeyboardInterrupt:
-            print("\n🛑 Servidor apagado localmente por el usuario.")
+        # 2. Iniciar Discord en Hilo Principal (Requisito de Python 3.14 / asyncio)
+        print("🚀 2. Iniciando bot de Discord en el Hilo Principal...", flush=True)
+        iniciar_discord_con_retry()
     else:
-        print("❌ ERROR: No se ha detectado la variable de entorno DISCORD_TOKEN.")
+        print("❌ ERROR: No se encontró la variable de entorno DISCORD_TOKEN en Render.", flush=True)
